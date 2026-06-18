@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import threading
 import time
 import uuid
@@ -13,7 +14,16 @@ from services.config import DATA_DIR
 from services.register import mail_provider, openai_register
 
 
-REGISTER_FILE = DATA_DIR / "register.json"
+def _runtime_data_dir() -> Path:
+    override = os.getenv("CHATGPT2API_DATA_DIR", "").strip()
+    if override:
+        return Path(override)
+    if os.getenv("VERCEL"):
+        return Path("/tmp/chatgpt2api/data")
+    return DATA_DIR
+
+
+REGISTER_FILE = _runtime_data_dir() / "register.json"
 
 
 def _serialize_outlook_pool(credentials: list[dict]) -> str:
