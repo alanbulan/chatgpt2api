@@ -5,7 +5,6 @@ from pathlib import Path
 
 from services.storage.base import StorageBackend
 from services.storage.database_storage import DatabaseStorageBackend
-from services.storage.git_storage import GitStorageBackend
 from services.storage.json_storage import JSONStorageBackend
 
 
@@ -46,7 +45,10 @@ def create_storage_backend(data_dir: Path) -> StorageBackend:
         return DatabaseStorageBackend(database_url)
     
     elif backend_type == "git":
-        # Git 仓库存储
+        # Git 仓库存储。这里必须懒加载 GitStorageBackend，避免 Vercel 等
+        # serverless 环境在未使用 git backend 时也强制导入 GitPython。
+        from services.storage.git_storage import GitStorageBackend
+
         repo_url = os.getenv("GIT_REPO_URL", "").strip()
         token = os.getenv("GIT_TOKEN", "").strip()
         branch = os.getenv("GIT_BRANCH", "main").strip()
