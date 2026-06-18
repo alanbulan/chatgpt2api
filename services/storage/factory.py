@@ -8,12 +8,28 @@ from services.storage.database_storage import DatabaseStorageBackend
 from services.storage.json_storage import JSONStorageBackend
 
 
+def _runtime_data_dir(data_dir: Path) -> Path:
+    """Return a writable data directory for serverless runtimes.
+
+    Vercel deploys Python functions under /var/task, which is read-only at
+    runtime. Keep the default path for normal Docker/VPS deployments, but move
+    JSON/SQLite runtime state to /tmp on Vercel unless explicitly overridden.
+    """
+    override = os.getenv("CHATGPT2API_DATA_DIR", "").strip()
+    if override:
+        return Path(override)
+    if os.getenv("VERCEL"):
+        return Path("/tmp/chatgpt2api/data")
+    return data_dir
+
+
 def create_storage_backend(data_dir: Path) -> StorageBackend:
     """
     根据环境变量创建存储后端
     
     环境变量：
     - STORAGE_BACKEND: json|sqlite|postgres|git (默认 json)
+    - CHATGPT2API_DATA_DIR: 可写数据目录，Vercel 默认 /tmp/chatgpt2api/data
     - DATABASE_URL: 数据库连接字符串 (用于 sqlite/postgres)
     - GIT_REPO_URL: Git 仓库地址 (用于 git)
     - GIT_TOKEN: Git 访问令牌 (用于 git)
@@ -21,13 +37,14 @@ def create_storage_backend(data_dir: Path) -> StorageBackend:
     - GIT_FILE_PATH: Git 仓库中的文件路径 (默认 accounts.json)
     """
     backend_type = os.getenv("STORAGE_BACKEND", "json").lower().strip()
+    runtime_data_dir = _runtime_data_dir(data_dir)
     
     print(f"[storage] Initializing storage backend: {backend_type}")
     
     if backend_type == "json":
         # 本地 JSON 文件存储
-        file_path = data_dir / "accounts.json"
-        auth_keys_path = data_dir / "auth_keys.json"
+        file_path = runtime_data_dir / "accounts.json"
+        auth_keys_path = runtime_data_dir / "auth_keys.json"
         print(f"[storage] Using JSON storage: {file_path}")
         return JSONStorageBackend(file_path, auth_keys_path)
     
@@ -37,7 +54,7 @@ def create_storage_backend(data_dir: Path) -> StorageBackend:
         
         if not database_url:
             # 如果没有指定 DATABASE_URL，使用本地 SQLite
-            database_url = f"sqlite:///{data_dir / 'accounts.db'}"
+            database_url = f"sqlite:///{runtime_data_dir / 'accounts.db'}"
             print(f"[storage] No DATABASE_URL provided, using local SQLite: {database_url}")
         else:
             print(f"[storage] Using database storage: {_mask_password(database_url)}")
@@ -63,7 +80,7 @@ def create_storage_backend(data_dir: Path) -> StorageBackend:
         
         print(f"[storage] Using Git storage: {_mask_token(repo_url)}, branch: {branch}, file: {file_path}")
         
-        cache_dir = data_dir / "git_cache"
+        cache_dir = runtime_data_dir / "git_cache"
         return GitStorageBackend(
             repo_url=repo_url,
             token=token,
