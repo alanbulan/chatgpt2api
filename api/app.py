@@ -5,7 +5,7 @@ from threading import Event
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 
 from api import accounts, ai, image_tasks, register, system
 from api.errors import install_exception_handlers
@@ -53,10 +53,21 @@ def create_app() -> FastAPI:
         asset = resolve_web_asset(full_path)
         if asset is not None:
             return FileResponse(asset)
-        if full_path.strip("/").startswith("_next/"):
+        clean_path = full_path.strip("/")
+        if clean_path in {"favicon.ico", "favicon.png"} or clean_path.startswith("_next/"):
             raise HTTPException(status_code=404, detail="Not Found")
         fallback = resolve_web_asset("")
         if fallback is None:
+            if not clean_path:
+                return JSONResponse(
+                    {
+                        "name": "chatgpt2api",
+                        "status": "ok",
+                        "version": app_version,
+                        "docs": "/docs",
+                        "openai_compatible_base": "/v1",
+                    }
+                )
             raise HTTPException(status_code=404, detail="Not Found")
         return FileResponse(fallback)
 
