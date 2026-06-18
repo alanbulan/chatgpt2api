@@ -12,6 +12,7 @@ from pathlib import Path
 from services.account_service import account_service
 from services.config import DATA_DIR
 from services.register import mail_provider, openai_register
+from services.state_service import state_service
 
 
 def _runtime_data_dir() -> Path:
@@ -23,6 +24,7 @@ def _runtime_data_dir() -> Path:
     return DATA_DIR
 
 
+REGISTER_STATE_KEY = "register_config"
 REGISTER_FILE = _runtime_data_dir() / "register.json"
 
 
@@ -81,12 +83,17 @@ class RegisterService:
             self.start()
 
     def _load(self) -> dict:
+        saved_state = state_service.load(REGISTER_STATE_KEY)
+        if saved_state:
+            return _normalize(saved_state)
         try:
             return _normalize(json.loads(self._store_file.read_text(encoding="utf-8")))
         except Exception:
             return _normalize({})
 
     def _save(self) -> None:
+        if state_service.save(REGISTER_STATE_KEY, self._config):
+            return
         self._store_file.parent.mkdir(parents=True, exist_ok=True)
         self._store_file.write_text(json.dumps(self._config, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
