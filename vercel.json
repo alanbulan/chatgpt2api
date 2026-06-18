@@ -1,5 +1,6 @@
 {
   "version": 2,
+  "buildCommand": "cd web && npm install && NEXT_PUBLIC_APP_VERSION=\"$(cat ../VERSION)\" npm run build && cd .. && rm -rf web_dist && cp -R web/out web_dist",
   "builds": [
     {
       "src": "app.py",
