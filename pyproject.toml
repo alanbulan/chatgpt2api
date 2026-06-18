@@ -1,7 +1,7 @@
 [project]
 name = "chatgpt2api"
 version = "0.1.0"
-description = "Add your description here"
+description = "chatgpt2api"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
@@ -15,13 +15,8 @@ dependencies = [
     "sqlalchemy>=2.0.0",
     "psycopg2-binary>=2.9.0",
     "gitpython>=3.1.0",
-]
-
-[dependency-groups]
-dev = [
     "httpx>=0.28.1",
 ]
 
-[[tool.uv.index]]
-url = "https://mirrors.aliyun.com/pypi/simple"
-default = true
+[project.scripts]
+app = "main:app"
